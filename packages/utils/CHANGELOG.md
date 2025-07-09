@@ -1,5 +1,14 @@
 # @paljs/utils
 
+## 8.2.1
+
+### Patch Changes
+
+- upgrade prisma version to 6.11
+- Updated dependencies
+  - @paljs/types@8.2.1
+  - @paljs/display@8.2.1
+
 ## 8.2.0
 
 ### Minor Changes

@@ -4,3 +4,7 @@ yarn.lock
 dist
 .DS_Store
 coverage
+
+# Prisma
+prisma-client
+

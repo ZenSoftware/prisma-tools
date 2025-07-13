@@ -17,7 +17,10 @@ export const ListConnect: React.FC<ListConnectProps> = ({ parent, row, model, ge
   const { lang } = useContext(TableContext);
   const rowId = row.original[model.idField];
 
-  const isConnected = !!parent.value[parent.field].find((r: any) => r[model.idField] === rowId);
+  const fieldValue = parent.value[parent.field];
+  const isConnected = Array.isArray(fieldValue)
+    ? !!fieldValue.find((r: any) => r && typeof r === 'object' && r[model.idField] === rowId)
+    : false;
 
   return (
     <td className="px-4 py-2 text-center whitespace-nowrap">

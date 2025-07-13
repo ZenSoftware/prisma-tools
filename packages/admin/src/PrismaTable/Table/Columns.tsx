@@ -1,59 +1,77 @@
-import React, { useContext } from 'react';
+import React from 'react';
+import { CellContext, ColumnDef } from '@tanstack/react-table';
 
 import { getDisplayName } from './utils';
-import { AdminSchemaField, AdminSchemaModel, GetColumnsPartial, GetColumns } from '../../types';
-import { TableContext } from '../Context';
+import { AdminSchemaField, AdminSchemaModel, GetColumnsPartial, PrismaRecord, Columns } from '../../types';
 import { buttonClasses, classNames } from '../../components/css';
 
-const columnsObject: GetColumns = (field, model) => ({
+export interface ContextValues {
+  lang: any;
+  schema: { models: AdminSchemaModel[] };
+  push: (path: string) => void;
+  pagesPath: string;
+}
+
+const columnsObject = (
+  field: AdminSchemaField,
+  model: AdminSchemaModel | undefined,
+  context: ContextValues,
+): Columns => ({
   boolean: {
-    Header: field.title,
-    accessor: field.name,
-    disableFilters: !field.filter || field.list,
-    defaultCanSort: field.sort,
-    Cell: ({ value }) => {
-      const { lang } = useContext(TableContext);
-      return field.list ? value.join(',') : value ? lang.yes : lang.no;
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: field.filter && !field.list,
+    enableSorting: field.sort,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as boolean | boolean[];
+      return field.list ? (value as boolean[]).join(',') : value ? context.lang.yes : context.lang.no;
     },
   },
   number: {
-    Header: field.title,
-    accessor: field.name,
-    disableFilters: !field.filter || field.list,
-    disableSortBy: !field.sort,
-    Cell: ({ value }) => (field.list ? value.join(',') : value),
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: field.filter && !field.list,
+    enableSorting: field.sort,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as number | number[];
+      return field.list ? (value as number[]).join(',') : value;
+    },
   },
   enum: {
-    Header: field.title,
-    accessor: field.name,
-    disableFilters: !field.filter || field.list,
-    disableSortBy: !field.sort,
-    Cell: ({ value }) => (field.list ? value.join(',') : value),
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: field.filter && !field.list,
+    enableSorting: field.sort,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as string | string[];
+      return field.list ? (value as string[]).join(',') : value;
+    },
   },
   DateTime: {
-    Header: field.title,
-    accessor: field.name,
-    minWidth: 200,
-
-    disableSortBy: !field.sort,
-    Cell: ({ value }) => (value ? new Date(value).toLocaleString() : ''),
+    header: field.title,
+    accessorKey: field.name,
+    minSize: 200,
+    enableColumnFilter: false,
+    enableSorting: field.sort,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as string;
+      return value ? new Date(value).toLocaleString() : '';
+    },
   },
   object: {
-    Header: field.title,
-    accessor: field.name,
-
-    disableSortBy: true,
-    Cell: ({ value }) => {
-      const {
-        schema: { models },
-        push,
-        pagesPath,
-      } = useContext(TableContext);
-      const model = models.find((item) => item.id === field.type);
-      if (!model || !value) return <></>;
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: false,
+    enableSorting: false,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as Record<string, any>;
+      const objectModel = context.schema.models.find((item) => item.id === field.type);
+      if (!objectModel || !value) return <></>;
       return (
         <button
-          onClick={() => push(`${pagesPath}${field.type}?${model.idField}=${value[model.idField]}`)}
+          onClick={() =>
+            context.push(`${context.pagesPath}${field.type}?${objectModel.idField}=${value[objectModel.idField]}`)
+          }
           style={{
             textOverflow: 'ellipsis',
             overflow: 'hidden',
@@ -66,88 +84,100 @@ const columnsObject: GetColumns = (field, model) => ({
             'rounded-md py-2 px-4 bg-transparent text-blue-600 hover:bg-blue-100 hover:bg-opacity-25',
           )}
         >
-          {getDisplayName(value, model)}
+          {getDisplayName(value, objectModel)}
         </button>
       );
     },
   },
   string: {
-    Header: field.title,
-    accessor: field.name,
-    disableFilters: !field.filter || field.list,
-    disableSortBy: !field.sort,
-    Cell: ({ value }) => (field.list ? value.join(',') : value),
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: field.filter && !field.list,
+    enableSorting: field.sort,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue() as string | string[];
+      return field.list ? (value as string[]).join(',') : value;
+    },
   },
   json: {
-    Header: field.title,
-    accessor: field.name,
-    disableFilters: true,
-    disableSortBy: true,
-    Cell: ({ value }) => (value ? JSON.stringify(value) : value),
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: false,
+    enableSorting: false,
+    cell: ({ getValue }: CellContext<PrismaRecord, unknown>) => {
+      const value = getValue();
+      return value ? JSON.stringify(value) : value;
+    },
   },
   list: {
-    Header: field.title,
-    accessor: field.name,
-
-    disableSortBy: true,
-    Cell: ({ row }) => {
-      const { push, pagesPath, lang } = useContext(TableContext);
+    header: field.title,
+    accessorKey: field.name,
+    enableColumnFilter: false,
+    enableSorting: false,
+    cell: ({ row }: CellContext<PrismaRecord, unknown>) => {
       if (!model) return <></>;
-      const id = (row.original as any)[model.idField];
+      const id = row.original[model.idField];
       return (
         <button
           className={classNames(
             buttonClasses,
             'rounded-md py-2 px-4 bg-transparent text-blue-600 hover:bg-blue-100 hover:bg-opacity-25',
           )}
-          onClick={() => push(`${pagesPath}${field.type}?${model.id}=${id}`)}
+          onClick={() => context.push(`${context.pagesPath}${field.type}?${model.id}=${id}`)}
         >
-          {lang.show}
+          {context.lang.show}
         </button>
       );
     },
   },
 });
 
-export const columns = (model?: AdminSchemaModel, customColumns?: GetColumnsPartial) => {
+export const columns = (
+  model?: AdminSchemaModel,
+  customColumns?: GetColumnsPartial,
+  context?: ContextValues,
+): ColumnDef<PrismaRecord>[] => {
+  if (!context) {
+    throw new Error('Context is required for columns function');
+  }
+
   const getColumn = (field: AdminSchemaField) => {
+    const baseColumns = columnsObject(field, model, context);
     return typeof customColumns !== 'undefined'
       ? {
-          ...columnsObject(field, model),
+          ...baseColumns,
           ...customColumns(field, model),
         }
-      : columnsObject(field, model);
+      : baseColumns;
   };
 
-  return React.useMemo(() => {
-    return model
-      ? model.fields
-          .slice()
-          .sort((a, b) => a.order - b.order)
-          .filter((field) => field.read)
-          .map((field) => {
-            if (field.list && field.kind === 'object') {
-              return getColumn(field).list;
-            }
-            if (field.kind !== 'scalar') {
-              return getColumn(field)[field.kind];
-            }
-            switch (field.type) {
-              case 'Int':
-              case 'Float':
-                return getColumn(field).number;
-              case 'Boolean':
-                return getColumn(field).boolean;
-              case 'DateTime':
-                return getColumn(field).DateTime;
-              case 'String':
-                return getColumn(field).string;
-              case 'Json':
-                return getColumn(field).json;
-              default:
-                return getColumn(field).string;
-            }
-          })
-      : [];
-  }, [model]);
+  return model
+    ? model.fields
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .filter((field) => field.read)
+        .map((field) => {
+          if (field.list && field.kind === 'object') {
+            return getColumn(field).list;
+          }
+          if (field.kind !== 'scalar') {
+            return getColumn(field)[field.kind];
+          }
+          switch (field.type) {
+            case 'Int':
+            case 'Float':
+              return getColumn(field).number;
+            case 'Boolean':
+              return getColumn(field).boolean;
+            case 'DateTime':
+              return getColumn(field).DateTime;
+            case 'String':
+              return getColumn(field).string;
+            case 'Json':
+              return getColumn(field).json;
+            default:
+              return getColumn(field).string;
+          }
+        })
+    : [];
 };

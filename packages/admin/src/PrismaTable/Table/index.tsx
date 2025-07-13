@@ -1,7 +1,16 @@
-import React, { Fragment, useContext, useState } from 'react';
-import { usePagination, useSortBy, useTable } from 'react-table';
+import React, { Fragment, useContext, useState, useMemo } from 'react';
+import {
+  useReactTable,
+  getCoreRowModel,
+  getSortedRowModel,
+  getPaginationRowModel,
+  flexRender,
+  PaginationState,
+  SortingState,
+  ColumnFiltersState,
+} from '@tanstack/react-table';
 
-import { columns } from './Columns';
+import { columns, type ContextValues } from './Columns';
 import { initPages } from './utils';
 import { TableContext } from '../Context';
 import Spinner from '../../components/Spinner';
@@ -71,42 +80,54 @@ export const Table: React.FC<TableProps> = ({
     dir,
   } = useContext(TableContext);
   const model = models.find((item) => item.id === modelName);
-  const columnList = columns(model, tableColumns);
-  const tableInstance = useTable(
-    {
-      columns: columnList,
-      data,
-      initialState: {
-        pageIndex: 0,
-        pageSize: defaultPageSize,
-        filters: initialFilter,
-      }, // Pass our hoisted table state
-      manualFilters: true,
-      manualSortBy: true,
-      manualPagination: true,
-      pageCount: controlledPageCount,
-    } as any,
-    useSortBy,
-    usePagination,
+
+  const contextValues: ContextValues = {
+    lang,
+    schema: { models },
+    push,
+    pagesPath,
+  };
+
+  const columnList = useMemo(
+    () => columns(model, tableColumns, contextValues),
+    [model, tableColumns, lang, models, push, pagesPath],
   );
 
-  const {
-    getTableProps,
-    getTableBodyProps,
-    headerGroups,
-    prepareRow,
-    page,
-    canPreviousPage,
-    canNextPage,
-    pageCount,
-    gotoPage,
-    nextPage,
-    previousPage,
-    setPageSize,
-    state: { pageIndex, pageSize, sortBy },
-  } = tableInstance as any;
+  // State for pagination
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: defaultPageSize,
+  });
 
-  const [selected, setSelected] = useState<number[]>([]);
+  // State for sorting
+  const [sorting, setSorting] = useState<SortingState>([]);
+
+  // State for filtering (not used directly by the table, but managed externally)
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>(
+    initialFilter.map((f) => ({ id: f.id, value: f.value })),
+  );
+
+  const tableInstance = useReactTable({
+    data,
+    columns: columnList,
+    state: {
+      pagination,
+      sorting,
+      columnFilters,
+    },
+    onPaginationChange: setPagination,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    manualPagination: true,
+    manualSorting: true,
+    manualFiltering: true,
+    pageCount: controlledPageCount,
+  });
+
+  const [selected, setSelected] = useState<any[]>([]);
   const [filters, setFilters] = useState(initialFilter);
   // Listen for changes in pagination and use the state to fetch our new data
 
@@ -129,12 +150,12 @@ export const Table: React.FC<TableProps> = ({
   };
 
   React.useEffect(() => {
-    fetchMore(pageSize, pageIndex);
-  }, [fetchMore, pageIndex, pageSize]);
+    fetchMore(pagination.pageSize, pagination.pageIndex);
+  }, [fetchMore, pagination.pageIndex, pagination.pageSize]);
 
   React.useEffect(() => {
-    sortByHandler(sortBy);
-  }, [sortBy]);
+    sortByHandler(sorting.map((s) => ({ id: s.id, desc: s.desc })));
+  }, [sorting, sortByHandler]);
 
   const setAllFilters = (filters: { id: string; value: any }[]) => {
     filterHandler(filters);
@@ -243,14 +264,11 @@ export const Table: React.FC<TableProps> = ({
             <div className="py-2 align-middle inline-block min-w-full sm:px-6 lg:px-8">
               <div className="overflow-hidden relative">
                 {loading && <Spinner />}
-                <table
-                  className="min-w-full divide-y divide-gray-200 border-b border-t border-gray-200"
-                  {...getTableProps()}
-                >
+                <table className="min-w-full divide-y divide-gray-200 border-b border-t border-gray-200">
                   <thead className="bg-gray-100">
-                    {headerGroups.map((headerGroup: any, index: number) => (
-                      <React.Fragment key={index}>
-                        <tr {...headerGroup.getHeaderGroupProps()}>
+                    {tableInstance.getHeaderGroups().map((headerGroup) => (
+                      <React.Fragment key={headerGroup.id}>
+                        <tr>
                           {isSelect && (
                             <th scope="col" className={thClasses}>
                               <Checkbox
@@ -282,19 +300,26 @@ export const Table: React.FC<TableProps> = ({
                               </button>
                             </th>
                           )}
-                          {headerGroup.headers.map((column: any, index2: number) => {
+                          {headerGroup.headers.map((header) => {
                             return (
                               <th
                                 scope="col"
                                 className={thClasses}
-                                key={index2}
-                                {...column.getHeaderProps(column.getSortByToggleProps())}
+                                key={header.id}
+                                {...(header.column.getCanSort()
+                                  ? {
+                                      onClick: header.column.getToggleSortingHandler(),
+                                      style: { cursor: 'pointer' },
+                                    }
+                                  : {})}
                               >
                                 <div className="flex justify-center items-center">
-                                  {column.render('Header')}
+                                  {header.isPlaceholder
+                                    ? null
+                                    : flexRender(header.column.columnDef.header, header.getContext())}
                                   <span>
-                                    {column.isSorted ? (
-                                      column.isSortedDesc ? (
+                                    {header.column.getIsSorted() ? (
+                                      header.column.getIsSorted() === 'desc' ? (
                                         <ArrowDownIcon className="h-5 w-5" />
                                       ) : (
                                         <ArrowUpIcon className="h-5 w-5" />
@@ -303,7 +328,7 @@ export const Table: React.FC<TableProps> = ({
                                       ''
                                     )}
                                   </span>
-                                  {filters.filter(Boolean).find((item) => item.id === column.id) ? (
+                                  {filters.filter(Boolean).find((item) => item.id === header.column.id) ? (
                                     <MagnifyingGlassCircleIcon className="h-5 w-5 text-green-500" />
                                   ) : (
                                     ''
@@ -316,11 +341,10 @@ export const Table: React.FC<TableProps> = ({
                       </React.Fragment>
                     ))}
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200" {...getTableBodyProps()}>
-                    {page.map((row: any, index: number) => {
-                      prepareRow(row);
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {tableInstance.getRowModel().rows.map((row) => {
                       return (
-                        <tr className="hover:bg-gray-100 even:bg-gray-50" key={index} {...row.getRowProps()}>
+                        <tr className="hover:bg-gray-100 even:bg-gray-50" key={row.id}>
                           {isSelect && (
                             <td className={tdClasses}>
                               <Checkbox
@@ -370,15 +394,10 @@ export const Table: React.FC<TableProps> = ({
                           {parent && model && fieldUpdate && (
                             <ListConnect getData={getData} parent={parent} row={row} model={model} />
                           )}
-                          {row.cells.map((cell: any, index2: number) => {
+                          {row.getVisibleCells().map((cell) => {
                             return (
-                              <td
-                                style={{ maxWidth: '9rem' }}
-                                className={tdClasses}
-                                key={index2}
-                                {...cell.getCellProps()}
-                              >
-                                {cell.render('Cell')}
+                              <td style={{ maxWidth: '9rem' }} className={tdClasses} key={cell.id}>
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
                               </td>
                             );
                           })}
@@ -387,7 +406,8 @@ export const Table: React.FC<TableProps> = ({
                     })}
                     <tr>
                       <td className={tdClasses} colSpan={10000}>
-                        {lang.showing} {page.length} {lang.of} ~{controlledPageCount * pageSize} {lang.results}
+                        {lang.showing} {tableInstance.getRowModel().rows.length} {lang.of} ~
+                        {controlledPageCount * pagination.pageSize} {lang.results}
                       </td>
                     </tr>
                   </tbody>
@@ -403,47 +423,47 @@ export const Table: React.FC<TableProps> = ({
           >
             <button
               type="button"
-              onClick={() => gotoPage(0)}
-              disabled={!canPreviousPage}
+              onClick={() => tableInstance.setPageIndex(0)}
+              disabled={!tableInstance.getCanPreviousPage()}
               className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 rtl:rounded-r-md ltr:rounded-l-md"
             >
               <ChevronDoubleRightIcon className={classNames('h-4 w-4', dir === 'rtl' ? '' : 'transform rotate-180')} />
             </button>
             <button
               type="button"
-              onClick={() => previousPage()}
-              disabled={!canPreviousPage}
+              onClick={() => tableInstance.previousPage()}
+              disabled={!tableInstance.getCanPreviousPage()}
               className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <ChevronRightIcon className="h-4 w-4 ltr:transform ltr:rotate-180" />
             </button>
-            {initPages(pageCount, pageIndex + 1, paginationOptions).map((item) => (
+            {initPages(tableInstance.getPageCount(), pagination.pageIndex + 1, paginationOptions).map((item) => (
               <button
                 type="button"
                 className={classNames(
-                  item === pageIndex + 1
+                  item === pagination.pageIndex + 1
                     ? 'bg-blue-500 text-white hover:bg-blue-700'
                     : 'bg-white text-gray-700 hover:bg-gray-100',
                   'relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium',
                 )}
                 key={item}
-                onClick={() => gotoPage(item - 1)}
+                onClick={() => tableInstance.setPageIndex(item - 1)}
               >
                 {item}
               </button>
             ))}
             <button
               type="button"
-              onClick={() => nextPage()}
-              disabled={!canNextPage}
+              onClick={() => tableInstance.nextPage()}
+              disabled={!tableInstance.getCanNextPage()}
               className="relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               <ChevronLeftIcon className="h-4 w-4 ltr:transform ltr:rotate-180" />
             </button>
             <button
               type="button"
-              onClick={() => gotoPage(pageCount - 1)}
-              disabled={!canNextPage}
+              onClick={() => tableInstance.setPageIndex(tableInstance.getPageCount() - 1)}
+              disabled={!tableInstance.getCanNextPage()}
               className={classNames(
                 'relative inline-flex items-center px-2 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50',
                 dir === 'rtl' ? 'rounded-l-md' : 'rounded-r-md',
@@ -463,12 +483,12 @@ export const Table: React.FC<TableProps> = ({
                     : index === pageSizeOptions.length - 1
                       ? 'rtl:rounded-l-md ltr:rounded-r-md'
                       : '',
-                  item === pageSize
+                  item === pagination.pageSize
                     ? 'bg-blue-500 text-white hover:bg-blue-700'
                     : 'bg-white text-gray-700 hover:bg-gray-100',
                   'relative inline-flex items-center px-2 py-1 border border-gray-300  text-sm font-medium',
                 )}
-                onClick={() => setPageSize(item)}
+                onClick={() => tableInstance.setPageSize(item)}
               >
                 {item}
               </button>

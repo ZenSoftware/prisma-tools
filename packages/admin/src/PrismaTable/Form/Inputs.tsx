@@ -9,7 +9,7 @@ import { getDisplayName } from '../Table/utils';
 import DynamicTable from '../dynamicTable';
 import { queryDocument } from '../QueryDocument';
 import { TableContext } from '../Context';
-import { FormInputs, ModelTableProps } from '../../types';
+import { FormInputs, ModelTableProps, PrismaRecord } from '../../types';
 import Select from '../../components/Select';
 import Checkbox from '../../components/Checkbox';
 import { buttonClasses, classNames, inputClasses } from '../../components/css';
@@ -34,7 +34,7 @@ const defaultInputs: Omit<FormInputs, 'Upload' | 'Editor'> = {
       defaultValue: value
         ? field.type === 'Json'
           ? JSON.stringify(value)
-          : field.list
+          : field.list && Array.isArray(value)
             ? value.join(',')
             : value
         : value,
@@ -130,10 +130,17 @@ const defaultInputs: Omit<FormInputs, 'Upload' | 'Editor'> = {
     const { data } = useQuery(queryDocument(models, field.type, true), {
       variables: {
         where: {
-          [model.idField]: state[model.idField],
+          [model.idField]:
+            state &&
+            typeof state === 'object' &&
+            !(state instanceof Date) &&
+            !Array.isArray(state) &&
+            model.idField in state
+              ? (state as PrismaRecord)[model.idField]
+              : undefined,
         },
       },
-      skip: !(state && Object.keys(state).length > 0),
+      skip: !(state && typeof state === 'object' && Object.keys(state).length > 0),
     });
 
     const result = data ? data[`findUnique${field.type}`] : {};
@@ -145,7 +152,14 @@ const defaultInputs: Omit<FormInputs, 'Upload' | 'Editor'> = {
     } = useController({
       name: field.name,
       control,
-      defaultValue: value[model.idField],
+      defaultValue:
+        value &&
+        typeof value === 'object' &&
+        !(value instanceof Date) &&
+        !Array.isArray(value) &&
+        model.idField in value
+          ? (value as PrismaRecord)[model.idField]
+          : undefined,
       rules: { required: field.required },
     });
 
@@ -155,7 +169,7 @@ const defaultInputs: Omit<FormInputs, 'Upload' | 'Editor'> = {
           <DynamicTable
             model={model.id}
             inEdit
-            connect={Object.keys(state).length > 0 ? result : {}}
+            connect={state && typeof state === 'object' && Object.keys(state).length > 0 ? result : {}}
             onConnect={(_value) => {
               setSate(_value);
               inputField.onChange(_value[model.idField]);
@@ -218,7 +232,11 @@ const defaultInputs: Omit<FormInputs, 'Upload' | 'Editor'> = {
           className={classNames('w-full', inputClasses, error ? 'border-red-400' : '')}
           type="datetime-local"
           disabled={disabled}
-          defaultValue={value ? new Date(value).toISOString().slice(0, 16) : ''}
+          defaultValue={
+            value && (typeof value === 'string' || typeof value === 'number' || value instanceof Date)
+              ? new Date(value).toISOString().slice(0, 16)
+              : ''
+          }
           {...register(field.name, {
             required: field.required,
             valueAsDate: true,

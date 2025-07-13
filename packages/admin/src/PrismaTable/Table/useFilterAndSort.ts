@@ -1,47 +1,42 @@
 import React, { useContext, useState } from 'react';
 import { TableContext } from '../Context';
 
-const filterMemo = (modelName: string, filter?: any) => {
-  const {
-    schema: { models },
-  } = useContext(TableContext);
-  return React.useMemo(() => {
-    const initialValue: any[] = [];
-    if (filter) {
-      const model = models.find((item) => item.id === modelName);
-      Object.keys(filter).forEach((key) => {
-        if (model && filter[key]) {
-          // filter by model field type
-          const field = model.fields.find((item) => item.type === key);
-          const fieldModel = models.find((item) => item.id === field?.type);
-          if (fieldModel) {
-            const isField = fieldModel.fields.find((field) => field.name === fieldModel.idField);
-            const filterValue = {
-              [fieldModel.idField]: {
-                equals: isField?.type === 'String' ? filter[key] : parseInt(filter[key]),
-              },
-            };
-            const value = field?.list ? { some: filterValue } : { is: filterValue };
-            initialValue.push({
-              id: field ? field.name : key,
-              value,
-            });
-          }
-          // filter by model field name
-          const fieldByName = model.fields.find((item) => item.name === key);
-          if (fieldByName) {
-            initialValue.push({
-              id: key,
-              value: {
-                equals: fieldByName.type === 'String' ? filter[key] : parseInt(filter[key]),
-              },
-            });
-          }
+const filterMemo = (modelName: string, filter: any, models: any[]) => {
+  const initialValue: any[] = [];
+  if (filter) {
+    const model = models.find((item: any) => item.id === modelName);
+    Object.keys(filter).forEach((key) => {
+      if (model && filter[key]) {
+        // filter by model field type
+        const field = model.fields.find((item: any) => item.type === key);
+        const fieldModel = models.find((item: any) => item.id === field?.type);
+        if (fieldModel) {
+          const isField = fieldModel.fields.find((field: any) => field.name === fieldModel.idField);
+          const filterValue = {
+            [fieldModel.idField]: {
+              equals: isField?.type === 'String' ? filter[key] : parseInt(filter[key]),
+            },
+          };
+          const value = field?.list ? { some: filterValue } : { is: filterValue };
+          initialValue.push({
+            id: field ? field.name : key,
+            value,
+          });
         }
-      });
-    }
-    return initialValue;
-  }, [filter, models]);
+        // filter by model field name
+        const fieldByName = model.fields.find((item: any) => item.name === key);
+        if (fieldByName) {
+          initialValue.push({
+            id: key,
+            value: {
+              equals: fieldByName.type === 'String' ? filter[key] : parseInt(filter[key]),
+            },
+          });
+        }
+      }
+    });
+  }
+  return initialValue;
 };
 
 function isObject(item: any) {
@@ -88,13 +83,17 @@ const handleFilter = (filters: { id: string; value: any }[]) => {
   return undefined;
 };
 
-type OrderBy = Record<string, 'asc' | 'desc' | { sort: 'asc' | 'desc'; nulls: 'last' | 'first' }>;
+export type OrderBy = Record<string, 'asc' | 'desc' | { sort: 'asc' | 'desc'; nulls: 'last' | 'first' }>;
 
 export const useFilterAndSort = (model: string, filter?: any, defaultOrder?: OrderBy[]) => {
-  const initialFilter = filterMemo(model, filter);
   const {
     schema: { models },
   } = useContext(TableContext);
+
+  const initialFilter = React.useMemo(() => {
+    return filterMemo(model, filter, models);
+  }, [model, filter, models]);
+
   const [where, setWhere] = useState<any>(handleFilter(initialFilter));
   const [orderBy, setOrderBy] = useState<OrderBy[] | undefined>(defaultOrder);
 

@@ -22,3 +22,11 @@ const initialContext: ContextProps = {
 };
 
 export const TableContext = React.createContext<ContextProps>(initialContext);
+
+export const useTableContext = () => {
+  const context = React.useContext(TableContext);
+  if (!context) {
+    throw new Error('useTableContext must be used within a TableContext');
+  }
+  return context;
+};

@@ -8,7 +8,7 @@ import Form from './Form';
 import { TableContext } from './Context';
 import EditRecord from './EditRecord';
 import { mutationDocument, queryDocument } from './QueryDocument';
-import { ContextProps, TableParentRecord } from '..';
+import { ContextProps, TableParentRecord } from '../types';
 import { LazyQueryExecFunction } from '@apollo/client/react/types/types';
 
 interface OperationVariables {

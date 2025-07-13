@@ -1,11 +1,11 @@
-import React, { useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { useLazyQuery } from '@apollo/client';
 
 import Spinner from '../components/Spinner';
 import Form from './Form';
 import DynamicTable from './dynamicTable';
 import { queryDocument } from './QueryDocument';
-import { TableContext } from './Context';
+import { useTableContext } from './Context';
 import { Option } from '../components/Select';
 import { classNames } from '../components/css';
 
@@ -23,7 +23,7 @@ const EditRecord: React.FC<EditRecordProps> = ({ model, update, onSave, view }) 
     pagesPath,
     onCancelUpdate,
     actions,
-  } = useContext(TableContext);
+  } = useTableContext();
   const modelObject = models.find((item) => item.id === model);
   const isField = modelObject?.fields.find((field) => field.name === modelObject?.idField);
   const [getRecord, { data, loading, error, refetch }] = useLazyQuery(queryDocument(models, model, true, true), {
@@ -57,7 +57,7 @@ const EditRecord: React.FC<EditRecordProps> = ({ model, update, onSave, view }) 
 
   const onUpdateCancel =
     onCancelUpdate ||
-    function () {
+    function ({ model }: { model: string }) {
       push(pagesPath + model);
     };
 
@@ -107,7 +107,9 @@ const EditRecord: React.FC<EditRecordProps> = ({ model, update, onSave, view }) 
                 name: model,
                 value: record,
                 field: relationField.name,
-                updateRecord: refetch,
+                updateRecord: async () => {
+                  await refetch();
+                },
               }}
             />
           )}

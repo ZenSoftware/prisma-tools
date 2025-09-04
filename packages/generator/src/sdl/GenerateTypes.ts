@@ -57,6 +57,10 @@ export class GenerateTypes {
       const innerType = name.replace(/^CreateMany|AndReturnOutputType$/g, '');
       return `ReturnType<Client.Prisma.${innerType}Delegate["createManyAndReturn"]>`;
     }
+    if (name.startsWith('UpdateMany') && name.endsWith('AndReturnOutputType')) {
+      const innerType = name.replace(/^UpdateMany|AndReturnOutputType$/g, '');
+      return `ReturnType<Client.Prisma.${innerType}Delegate["updateManyAndReturn"]>`;
+    }
     return `Client.Prisma.${name}`;
   }
 
@@ -77,6 +81,10 @@ export class GenerateTypes {
         if (options.type.startsWith('CreateMany') && options.type.endsWith('AndReturnOutputType')) {
           const innerType = options.type.replace(/^CreateMany|AndReturnOutputType$/g, '');
           return `ReturnType<Client.Prisma.${innerType}Delegate["createManyAndReturn"]>`;
+        }
+        if (options.type.startsWith('UpdateMany') && options.type.endsWith('AndReturnOutputType')) {
+          const innerType = options.type.replace(/^UpdateMany|AndReturnOutputType$/g, '');
+          return `ReturnType<Client.Prisma.${innerType}Delegate["updateManyAndReturn"]>`;
         }
         const type =
           options.type.toString() === 'AffectedRowsOutput'

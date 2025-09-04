@@ -114,25 +114,33 @@ export type CreateManyUserAndReturnOutputType = {
 export type UpdateManyUserAndReturnOutputType = {
   [key: string]: Resolver<any, any, any>
 } & {
-  id?: Resolver<Client.Prisma.UpdateManyUserAndReturnOutputType, {}, number>
+  id?: Resolver<
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
+    {},
+    number
+  >
   createdAt?: Resolver<
-    Client.Prisma.UpdateManyUserAndReturnOutputType,
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
     {},
     Date
   >
-  email?: Resolver<Client.Prisma.UpdateManyUserAndReturnOutputType, {}, string>
+  email?: Resolver<
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
+    {},
+    string
+  >
   name?: Resolver<
-    Client.Prisma.UpdateManyUserAndReturnOutputType,
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
     {},
     string | null
   >
   password?: Resolver<
-    Client.Prisma.UpdateManyUserAndReturnOutputType,
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
     {},
     string
   >
   permissions?: Resolver<
-    Client.Prisma.UpdateManyUserAndReturnOutputType,
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>,
     {},
     any
   >
@@ -181,30 +189,38 @@ export type CreateManyPostAndReturnOutputType = {
 export type UpdateManyPostAndReturnOutputType = {
   [key: string]: Resolver<any, any, any>
 } & {
-  id?: Resolver<Client.Prisma.UpdateManyPostAndReturnOutputType, {}, number>
+  id?: Resolver<
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
+    {},
+    number
+  >
   published?: Resolver<
-    Client.Prisma.UpdateManyPostAndReturnOutputType,
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
     {},
     boolean
   >
-  title?: Resolver<Client.Prisma.UpdateManyPostAndReturnOutputType, {}, string>
+  title?: Resolver<
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
+    {},
+    string
+  >
   authorId?: Resolver<
-    Client.Prisma.UpdateManyPostAndReturnOutputType,
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
     {},
     number | null
   >
   createdAt?: Resolver<
-    Client.Prisma.UpdateManyPostAndReturnOutputType,
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
     {},
     Date
   >
   updatedAt?: Resolver<
-    Client.Prisma.UpdateManyPostAndReturnOutputType,
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
     {},
     Date
   >
   author?: Resolver<
-    Client.Prisma.UpdateManyPostAndReturnOutputType,
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>,
     UpdateManyPostAndReturnOutputTypeAuthorArgs,
     Client.User | null
   >
@@ -276,7 +292,7 @@ export type Mutation = { [key: string]: Resolver<any, any, any> } & {
   updateManyUserAndReturn?: Resolver<
     {},
     UpdateManyUserAndReturnArgs,
-    Client.Prisma.UpdateManyUserAndReturnOutputType[]
+    ReturnType<Client.Prisma.UserDelegate['updateManyAndReturn']>
   >
   deleteManyUser?: Resolver<{}, DeleteManyUserArgs, Client.Prisma.BatchPayload>
   createOnePost?: Resolver<{}, CreateOnePostArgs, Client.Post>
@@ -293,7 +309,7 @@ export type Mutation = { [key: string]: Resolver<any, any, any> } & {
   updateManyPostAndReturn?: Resolver<
     {},
     UpdateManyPostAndReturnArgs,
-    Client.Prisma.UpdateManyPostAndReturnOutputType[]
+    ReturnType<Client.Prisma.PostDelegate['updateManyAndReturn']>
   >
   deleteManyPost?: Resolver<{}, DeleteManyPostArgs, Client.Prisma.BatchPayload>
   executeRaw?: Resolver<{}, ExecuteRawArgs, any>
